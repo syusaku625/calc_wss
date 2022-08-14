@@ -1,0 +1,7 @@
+build
+*.vtu
+Main
+settings.json
+*.dat
+*.h5
+*.sh
