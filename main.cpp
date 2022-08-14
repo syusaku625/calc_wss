@@ -348,11 +348,13 @@ void input_prism(string layer_file, vector<vector<int>> &layer_pair)
 
 int main(int argc, char *argv[]) {
     string input_dir = argv[1];
+    int h5_time_number = stoi(argv[2]);
     cout << input_dir << endl;
+    cout << h5_time_number << endl;
     vector<vector<double>> u,v,w;
     vector<double> wall_share_stress_u,wall_share_stress_v,wall_share_stress_w;
     vector<vector<vector<double>>> x;
-    int h5_time_number = 393;
+    
     int Directions_x, Directions_y;
 
     string h5_file = input_dir + "/" + input_dir+".h5";
