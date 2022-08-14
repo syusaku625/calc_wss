@@ -413,7 +413,6 @@ int main(int argc, char *argv[]) {
         wss_w.push_back(wall_share_stress_w);
     }
 
-    cout << wss_u.size() << " " << wss_u[0].size() << endl;
     string output_h5_name = input_dir + "_wss.h5";
     H5std_string FILE_NAME(output_h5_name.c_str());
     for (int i = 0; i < wss_u.size(); i++){
