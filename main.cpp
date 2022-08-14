@@ -413,6 +413,7 @@ int main(int argc, char *argv[]) {
         wss_w.push_back(wall_share_stress_w);
     }
 
+    cout << wss_u.size() << " " << wss_u[0].size() << endl;
     string output_h5_name = input_dir + "_wss.h5";
     H5std_string FILE_NAME(output_h5_name.c_str());
     for (int i = 0; i < wss_u.size(); i++){
@@ -423,11 +424,11 @@ int main(int argc, char *argv[]) {
         file.createGroup(Gr.c_str());
         Group group = file.openGroup(Gr.c_str());
         dataName = Gr + "/wss_u";
-        exportHDF5_double_1D(file, dataName, wss_u[i], 3);
+        exportHDF5_double_1D(file, dataName, wss_u[i], wss_u[i].size());
         dataName = Gr + "/wss_v";
-        exportHDF5_double_1D(file, dataName, wss_v[i], 3);
+        exportHDF5_double_1D(file, dataName, wss_v[i], wss_u[i].size());
         dataName = Gr + "/wss_w";
-        exportHDF5_double_1D(file, dataName, wss_w[i], 3);
+        exportHDF5_double_1D(file, dataName, wss_w[i], wss_u[i].size());
       }
       else {
           H5File file(FILE_NAME, H5F_ACC_RDWR);
@@ -436,11 +437,11 @@ int main(int argc, char *argv[]) {
           file.createGroup(Gr.c_str());
           Group group = file.openGroup(Gr.c_str());
           dataName = Gr + "/wss_u";
-          exportHDF5_double_1D(file, dataName, wss_u[i], 3);
+          exportHDF5_double_1D(file, dataName, wss_u[i], wss_u[i].size());
           dataName = Gr + "/wss_v";
-          exportHDF5_double_1D(file, dataName, wss_v[i], 3);
+          exportHDF5_double_1D(file, dataName, wss_v[i], wss_u[i].size());
           dataName = Gr + "/wss_w";
-          exportHDF5_double_1D(file, dataName, wss_w[i], 3);
+          exportHDF5_double_1D(file, dataName, wss_w[i], wss_u[i].size());
       }
     }
 }
