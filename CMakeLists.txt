@@ -97,6 +97,7 @@ target_link_libraries(${main_target} PRIVATE
   ${HDF5_LIBRARIES}
   ${HDF5_CXX_LIBRARIES}
   Base
+  H5
 )
 
 install(TARGETS ${main_target} DESTINATION ${CMAKE_INSTALL_PREFIX})
