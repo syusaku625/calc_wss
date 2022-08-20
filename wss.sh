@@ -1,0 +1,10 @@
+./Main NPH_S12 342
+./Main NPH_S18 289
+./Main NPH_S23 436
+./Main NPH_S24 324
+./Main NPH_S25 324
+./Main NPH_S26 311
+./Main NPH_S31 347
+#./Main NPH_S33 320
+./Main NPH_S35 393
+./Main NPH_S38 292
