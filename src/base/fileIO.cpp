@@ -21,7 +21,7 @@ int fileIO::CountNumbersOfTextLines(const string &filePath )
   return i-1;
 }
 
-void fileIO::input_prism(string layer_file, vector<vector<int>> &layer_pair)
+void fileIO::input_prism(string layer_file, vector<vector<int>> &layer_pair, vector<int> &prism_id)
 {
   string str,tmp;
   int numOfLayer = CountNumbersOfTextLines(layer_file);
@@ -43,8 +43,13 @@ void fileIO::input_prism(string layer_file, vector<vector<int>> &layer_pair)
   for(int i=0;i<numOfLayer;i++){
       getline(file,str);
       istringstream stream(str);
-      for(int j=0;j<6;j++){
-          getline(stream,tmp,' ');
+      for(int j=0;j<7;j++){
+        getline(stream,tmp,' ');
+          if(j==6){
+            prism_id.push_back(stoi(tmp));
+            continue;
+          }
+          
           layer_pair[i][j] = stoi(tmp);
       }
   }

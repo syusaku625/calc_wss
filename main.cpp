@@ -10,6 +10,7 @@
 #include "ShapeFunction.h"
 #include "fem_base_mathTool.h"
 #include <sys/stat.h>
+#include<set>
 #include "hdf5_rw.h"
 #include "fileIO.h"
 #include <H5Cpp.h>
@@ -17,18 +18,13 @@
 using namespace std;
 using namespace H5;
 
-void calc_wall_share_stress(vector<vector<int>> layer_pair, vector<vector<double>> x, vector<double> u, vector<double> v, vector<double> w, vector<double> &wall_share_stress_u, vector<double> &wall_share_stress_v, vector<double> &wall_share_stress_w, vector<vector<vector<double>>> &OSI_t)
+void calc_wall_share_stress(vector<vector<int>> layer_pair, vector<vector<double>> x, vector<double> u, vector<double> v, vector<double> w, vector<double> &wss_element_u, vector<double> &wss_element_v,vector<double> &wss_element_w,vector<vector<vector<double>>> &OSI_t, vector<int> prism_id)
 {
     double mu =0.001;
     string str,tmp;
     int numOfLayer = layer_pair.size();
 
     GaussTriangle gTri(1);
-    for (int i = 0; i < x.size(); i++){
-      wall_share_stress_u[i] = 0.0;
-      wall_share_stress_v[i] = 0.0;
-      wall_share_stress_w[i] = 0.0;
-    }
 
     vector<vector<double>> tmp_t;
     for (int ic = 0; ic < numOfLayer; ic++){
@@ -90,13 +86,10 @@ void calc_wall_share_stress(vector<vector<int>> layer_pair, vector<vector<double
         tproy[0] = n[1] * tp_1[2] - n[2] * tp_1[1];
         tproy[1] = n[2] * tp_1[0] - n[0] * tp_1[2];
         tproy[2] = n[0] * tp_1[1] - n[1] * tp_1[0];
-        
-        for (int i = 0; i < 3; i++){
-            wall_share_stress_u[layer_pair[ic][i]] = tproy[0];
-            wall_share_stress_v[layer_pair[ic][i]] = tproy[1];
-            wall_share_stress_w[layer_pair[ic][i]] = tproy[2];
-        }
 
+        wss_element_u[prism_id[ic]] = tproy[0];
+        wss_element_v[prism_id[ic]] = tproy[1];
+        wss_element_w[prism_id[ic]] = tproy[2];
         vector<double> element_t(3);
         for(int i=0; i<3; i++) element_t[i]=t[i];
         tmp_t.push_back(element_t);
@@ -135,7 +128,7 @@ void calc_OSI(vector<double> &OSI, vector<vector<vector<double>>> OSI_t, vector<
   }
 }
 
-void export_vtu(const std::string &file, vector<vector<double>> x, vector<vector<int>> element, vector<double> u, vector<double> v, vector<double> w, vector<double> wall_share_stress_u, vector<double> wall_share_stress_v, vector<double> wall_share_stress_w)
+void export_vtu(const std::string &file, vector<vector<double>> x, vector<vector<int>> element, vector<double> u, vector<double> v, vector<double> w, vector<double> element_wss_u,vector<double> element_wss_v,vector<double> element_wss_w)
 {
   FILE *fp;
 
@@ -179,15 +172,13 @@ void export_vtu(const std::string &file, vector<vector<double>> x, vector<vector
   fprintf(fp, "</Cells>\n");
 
   fprintf(fp, "<PointData>\n");
-  fprintf(fp, "<DataArray type=\"Float64\" Name=\"velocity[m/s]\" NumberOfComponents=\"3\" format=\"appended\" offset=\"%d\"/>\n",offset);
-  offset += sizeof(int) + sizeof(double) * x.size() * 3;
 
-  fprintf(fp, "<DataArray type=\"Float64\" Name=\"wall_share_stress[Pa]\" NumberOfComponents=\"3\" format=\"appended\" offset=\"%d\"/>\n",offset);
-  offset += sizeof(int) + sizeof(double) * x.size() * 3;
   fprintf(fp, "</PointData>\n");
 
 
   fprintf(fp, "<CellData>\n");
+  fprintf(fp, "<DataArray type=\"Float64\" Name=\"wall_share_stress[Pa]\" NumberOfComponents=\"3\" format=\"appended\" offset=\"%d\"/>\n",offset);
+  offset += sizeof(int) + sizeof(double) * element.size()*3;
   fprintf(fp, "</CellData>\n");
   fprintf(fp, "</Piece>\n");
   fprintf(fp, "</UnstructuredGrid>\n");
@@ -210,30 +201,21 @@ void export_vtu(const std::string &file, vector<vector<double>> x, vector<vector
   size=sizeof(double)*x.size()*3;
   ofs.write((char *)&size, sizeof(size));
   ofs.write((char *)data_d, size);
-
-  num=0;
-  for (int ic = 0; ic < x.size(); ic++){
-      data_d[num]   = u[ic];
-      data_d[num+1] = v[ic];
-      data_d[num+2] = w[ic];
-      num=num+3;
-  }
-  size=sizeof(double)*x.size()*3;
-  ofs.write((char *)&size, sizeof(size));
-  ofs.write((char *)data_d, size);
-
-  num=0;
-  for (int ic = 0; ic < x.size(); ic++){
-    data_d[num]   = wall_share_stress_u[ic];
-    data_d[num+1] = wall_share_stress_v[ic];
-    data_d[num+2] = wall_share_stress_w[ic];
-    num=num+3;
-  }
-  size=sizeof(double)*x.size()*3;
-  ofs.write((char *)&size, sizeof(size));
-  ofs.write((char *)data_d, size);
-
   delete data_d;
+
+  double *data_d2 = new double[element.size()*3];
+  num=0;
+  for (int ic = 0; ic < element.size(); ic++){
+    data_d2[num]   = element_wss_u[ic];
+    data_d2[num+1]   = element_wss_v[ic];
+    data_d2[num+2]   = element_wss_w[ic];
+    num+=3;
+  }
+  size=sizeof(double)*element.size()*3;
+  ofs.write((char *)&size, sizeof(size));
+  ofs.write((char *)data_d2, size);
+
+  delete data_d2;
   ofs.close();
 
   if ((fp = fopen(file.c_str(), "a")) == NULL)
@@ -260,7 +242,7 @@ int main(int argc, char *argv[]) {
     cout << input_dir << endl;
     cout << h5_time_number << endl;
     vector<vector<double>> u,v,w;
-    vector<double> wall_share_stress_u,wall_share_stress_v,wall_share_stress_w;
+    vector<double> element_wss_u,element_wss_v,element_wss_w;
     vector<vector<vector<double>>> x;
     int Directions_x, Directions_y;
 
@@ -287,64 +269,69 @@ int main(int argc, char *argv[]) {
     vector<vector<int>> element;
     file.input_element(element_file, element);
 
-    wall_share_stress_u.resize(x[0].size());
-    wall_share_stress_v.resize(x[0].size());
-    wall_share_stress_w.resize(x[0].size());
-
     string layer_file = input_dir + "/" + "prism.dat";
     vector<vector<int>> layer_pair;
-    file.input_prism(layer_file, layer_pair);
-    
+    vector<int> prism_id;
+    file.input_prism(layer_file, layer_pair, prism_id);
+
+    //for(int i=0; i<prism_id.size(); i++){
+    //  cout << prism_id[i] << endl;
+    //}
+
     string result_folder = "Result_" + patient_name;
     mkdir(result_folder.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
 
     vector<vector<double>> t;
+    element_wss_u.resize(element.size());
+    element_wss_v.resize(element.size());
+    element_wss_w.resize(element.size());
 
-    vector<vector<double>> wss_u, wss_v, wss_w;
+    //cout << element_wss.size() << endl;
+    //exit(1);
     vector<vector<vector<double>>> OSI_t;
-
+    //cout << "check" << endl;
     for(int i=0; i<u.size(); i++){
-        calc_wall_share_stress(layer_pair, x[i], u[i], v[i], w[i], wall_share_stress_u, wall_share_stress_v, wall_share_stress_w, OSI_t);
+        calc_wall_share_stress(layer_pair, x[i], u[i], v[i], w[i], element_wss_u,element_wss_v,element_wss_w,OSI_t, prism_id);
         string vtu_file_path = result_folder + "/test_" + to_string(i) + ".vtu";
         cout << vtu_file_path << endl;
-        export_vtu(vtu_file_path,x[i],element,u[i],v[i],w[i], wall_share_stress_u, wall_share_stress_v, wall_share_stress_w);
-        wss_u.push_back(wall_share_stress_u);
-        wss_v.push_back(wall_share_stress_v);
-        wss_w.push_back(wall_share_stress_w);
+        //for(int j=0; j<element_wss.size(); j++){
+        //  cout << element_wss[j] << endl;
+        //}
+        export_vtu(vtu_file_path,x[i],element,u[i],v[i],w[i],element_wss_u,element_wss_v,element_wss_w);
     }
     
-    vector<double> OSI;
-    calc_OSI(OSI, OSI_t, layer_pair, h5_time_number);
+    //vector<double> OSI;
+    //calc_OSI(OSI, OSI_t, layer_pair, h5_time_number);
 
 
-    string output_h5_name = patient_name + "_wss.h5";
-    H5std_string FILE_NAME(output_h5_name.c_str());
-    for (int i = 0; i < wss_u.size(); i++){
-      if (i == 0) {
-        H5File file(FILE_NAME, H5F_ACC_TRUNC);
-        std::string dataName;
-        std::string Gr = "/"+to_string(i);
-        file.createGroup(Gr.c_str());
-        Group group = file.openGroup(Gr.c_str());
-        dataName = Gr + "/wss_u";
-        H5RW.exportHDF5_double_1D(file, dataName, wss_u[i], wss_u[i].size());
-        dataName = Gr + "/wss_v";
-        H5RW.exportHDF5_double_1D(file, dataName, wss_v[i], wss_u[i].size());
-        dataName = Gr + "/wss_w";
-        H5RW.exportHDF5_double_1D(file, dataName, wss_w[i], wss_u[i].size());
-      }
-      else {
-          H5File file(FILE_NAME, H5F_ACC_RDWR);
-          std::string dataName;
-          std::string Gr = "/" + to_string(i);
-          file.createGroup(Gr.c_str());
-          Group group = file.openGroup(Gr.c_str());
-          dataName = Gr + "/wss_u";
-          H5RW.exportHDF5_double_1D(file, dataName, wss_u[i], wss_u[i].size());
-          dataName = Gr + "/wss_v";
-          H5RW.exportHDF5_double_1D(file, dataName, wss_v[i], wss_u[i].size());
-          dataName = Gr + "/wss_w";
-          H5RW.exportHDF5_double_1D(file, dataName, wss_w[i], wss_u[i].size());
-      }
-    }
+    //string output_h5_name = patient_name + "_wss.h5";
+    //H5std_string FILE_NAME(output_h5_name.c_str());
+    //for (int i = 0; i < wss_u.size(); i++){
+    //  if (i == 0) {
+    //    H5File file(FILE_NAME, H5F_ACC_TRUNC);
+    //    std::string dataName;
+    //    std::string Gr = "/"+to_string(i);
+    //    file.createGroup(Gr.c_str());
+    //    Group group = file.openGroup(Gr.c_str());
+    //    dataName = Gr + "/wss_u";
+    //    H5RW.exportHDF5_double_1D(file, dataName, wss_u[i], wss_u[i].size());
+    //    dataName = Gr + "/wss_v";
+    //    H5RW.exportHDF5_double_1D(file, dataName, wss_v[i], wss_u[i].size());
+    //    dataName = Gr + "/wss_w";
+    //    H5RW.exportHDF5_double_1D(file, dataName, wss_w[i], wss_u[i].size());
+    //  }
+    //  else {
+    //      H5File file(FILE_NAME, H5F_ACC_RDWR);
+    //      std::string dataName;
+    //      std::string Gr = "/" + to_string(i);
+    //      file.createGroup(Gr.c_str());
+    //      Group group = file.openGroup(Gr.c_str());
+    //      dataName = Gr + "/wss_u";
+    //      H5RW.exportHDF5_double_1D(file, dataName, wss_u[i], wss_u[i].size());
+    //      dataName = Gr + "/wss_v";
+    //      H5RW.exportHDF5_double_1D(file, dataName, wss_v[i], wss_u[i].size());
+    //      dataName = Gr + "/wss_w";
+    //      H5RW.exportHDF5_double_1D(file, dataName, wss_w[i], wss_u[i].size());
+    //  }
+    //}
 }

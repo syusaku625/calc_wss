@@ -11,7 +11,7 @@ class fileIO{
 public:
     int CountNumbersOfTextLines(const std::string &filePath );
     void input_element(std::string element_file, std::vector<std::vector<int>> &element);
-    void input_prism(std::string layer_file, std::vector<std::vector<int>> &layer_pair);
+    void input_prism(std::string layer_file, std::vector<std::vector<int>> &layer_pair, std::vector<int> &prism_id);
 };
 
 #endif
