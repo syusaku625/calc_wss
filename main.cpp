@@ -97,22 +97,27 @@ void calc_wall_share_stress(vector<vector<int>> layer_pair, vector<vector<double
     OSI_t.push_back(tmp_t);
 }
 
-void calc_OSI(vector<double> &OSI, vector<vector<vector<double>>> OSI_t, vector<vector<int>> layer_pair, int fourth_CC)
+void calc_OSI(vector<double> &OSI, vector<vector<vector<double>>> OSI_t, vector<vector<int>> layer_pair, int fourth_CC, vector<int> prism_id)
 {
+  cout << "check1" << endl;
   int start= fourth_CC/4*2;
   int end =start+fourth_CC/4;
 
+  cout << "check2" << endl;
   vector<vector<double>> int_vec_t(layer_pair.size(), vector<double>(3,0));
   vector<double> abs_int_vec_t(layer_pair.size());
   
+  cout << "check3" << endl;
   for(int i=0; i<layer_pair.size(); i++){
     for(int j=start; j<=end; j++){
+      cout << i << " " << j << endl;
       int_vec_t[i][0] += OSI_t[j][i][0];
       int_vec_t[i][1] += OSI_t[j][i][1];
       int_vec_t[i][2] += OSI_t[j][i][2];
     }
     abs_int_vec_t[i] = sqrt(int_vec_t[i][0]*int_vec_t[i][0]+int_vec_t[i][1]*int_vec_t[i][1]+int_vec_t[i][2]*int_vec_t[i][2]);
   }
+  cout << "check4" << endl;
 
   vector<double> int_abs_vec_t(layer_pair.size(),0);
 
@@ -123,109 +128,11 @@ void calc_OSI(vector<double> &OSI, vector<vector<vector<double>>> OSI_t, vector<
     }
   }
 
+  cout << "check5" << endl;
   for(int i=0; i<layer_pair.size(); i++){
-    OSI[i] = 0.5*(1.0-abs_int_vec_t[i]/int_abs_vec_t[i]);
+    cout << i << " " << prism_id[i] << endl;
+    OSI[prism_id[i]] = 0.5*(1.0-abs_int_vec_t[i]/int_abs_vec_t[i]);
   }
-}
-
-void export_vtu(const std::string &file, vector<vector<double>> x, vector<vector<int>> element, vector<double> u, vector<double> v, vector<double> w, vector<double> element_wss_u,vector<double> element_wss_v,vector<double> element_wss_w)
-{
-  FILE *fp;
-
-  if ((fp = fopen(file.c_str(), "w")) == NULL)
-  {
-    cout << file << " open error" << endl;
-    exit(1);
-  }
-
-  fprintf(fp, "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt32\">\n");
-  fprintf(fp, "<UnstructuredGrid>\n");
-  fprintf(fp, "<Piece NumberOfPoints= \"%d\" NumberOfCells= \"%d\" >\n", x.size(), element.size());
-  fprintf(fp, "<Points>\n");
-  int offset = 0;
-  fprintf(fp, "<DataArray type=\"Float64\" Name=\"Position\" NumberOfComponents=\"3\" format=\"appended\" offset=\"%d\"/>\n",offset);
-  offset += sizeof(int) + sizeof(double) * x.size() * 3;
-  fprintf(fp, "</Points>\n");
-
-  fprintf(fp, "<Cells>\n");
-  fprintf(fp, "<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">\n");
-  for (int i = 0; i < element.size(); i++){
-    for (int j = 0; j < element[i].size(); j++) fprintf(fp, "%d ", element[i][j]);
-    fprintf(fp, "\n");
-  }
-  fprintf(fp, "</DataArray>\n");
-  fprintf(fp, "<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">\n");
-  int num = 0;
-  for (int i = 0; i < element.size(); i++)
-  {
-    num += element[i].size();
-    fprintf(fp, "%d\n", num);
-  }
-
-  fprintf(fp, "</DataArray>\n");
-  fprintf(fp, "<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n");
-  for (int i = 0; i < element.size(); i++){
-    if(element[i].size()==4) fprintf(fp, "%d\n", 10);
-    if(element[i].size()==6) fprintf(fp, "%d\n", 13);
-  }
-  fprintf(fp, "</DataArray>\n");
-  fprintf(fp, "</Cells>\n");
-
-  fprintf(fp, "<PointData>\n");
-
-  fprintf(fp, "</PointData>\n");
-
-
-  fprintf(fp, "<CellData>\n");
-  fprintf(fp, "<DataArray type=\"Float64\" Name=\"wall_share_stress[Pa]\" NumberOfComponents=\"3\" format=\"appended\" offset=\"%d\"/>\n",offset);
-  offset += sizeof(int) + sizeof(double) * element.size()*3;
-  fprintf(fp, "</CellData>\n");
-  fprintf(fp, "</Piece>\n");
-  fprintf(fp, "</UnstructuredGrid>\n");
-  fprintf(fp, "<AppendedData encoding=\"raw\">\n");
-  fprintf(fp, "_");
-  fclose(fp);
-   
-
-  fstream ofs;
-  ofs.open(file.c_str(), ios::out | ios::app | ios_base::binary);
-  double *data_d = new double[x.size()*3];
-  num = 0;
-  int size=0;
-  for (int ic = 0; ic < x.size(); ic++){
-    for(int j=0;j<3;j++){
-      data_d[num] = x[ic][j];
-      num++;
-    }
-  }
-  size=sizeof(double)*x.size()*3;
-  ofs.write((char *)&size, sizeof(size));
-  ofs.write((char *)data_d, size);
-  delete data_d;
-
-  double *data_d2 = new double[element.size()*3];
-  num=0;
-  for (int ic = 0; ic < element.size(); ic++){
-    data_d2[num]   = element_wss_u[ic];
-    data_d2[num+1]   = element_wss_v[ic];
-    data_d2[num+2]   = element_wss_w[ic];
-    num+=3;
-  }
-  size=sizeof(double)*element.size()*3;
-  ofs.write((char *)&size, sizeof(size));
-  ofs.write((char *)data_d2, size);
-
-  delete data_d2;
-  ofs.close();
-
-  if ((fp = fopen(file.c_str(), "a")) == NULL)
-  {
-    cout << file << " open error" << endl;
-    exit(1);
-  }
-  fprintf(fp, "\n</AppendedData>\n");
-  fprintf(fp, "</VTKFile>\n");
-  fclose(fp);
 }
 
 int main(int argc, char *argv[]) {
@@ -282,10 +189,12 @@ int main(int argc, char *argv[]) {
     mkdir(result_folder.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
 
     vector<vector<double>> t;
+    vector<double> OSI;
+
     element_wss_u.resize(element.size());
     element_wss_v.resize(element.size());
     element_wss_w.resize(element.size());
-
+    OSI.resize(element.size());
     //cout << element_wss.size() << endl;
     //exit(1);
     vector<vector<vector<double>>> OSI_t;
@@ -297,11 +206,11 @@ int main(int argc, char *argv[]) {
         //for(int j=0; j<element_wss.size(); j++){
         //  cout << element_wss[j] << endl;
         //}
-        export_vtu(vtu_file_path,x[i],element,u[i],v[i],w[i],element_wss_u,element_wss_v,element_wss_w);
+        file.export_vtu(vtu_file_path,x[i],element,element_wss_u,element_wss_v,element_wss_w);
     }
-    
-    //vector<double> OSI;
-    //calc_OSI(OSI, OSI_t, layer_pair, h5_time_number);
+
+    calc_OSI(OSI, OSI_t, layer_pair, h5_time_number, prism_id);
+    file.export_vtu_OSI("OSI_test.vtu",x[0],element,OSI);
 
 
     //string output_h5_name = patient_name + "_wss.h5";

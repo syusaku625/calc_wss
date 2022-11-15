@@ -36,7 +36,7 @@ endif()
 string(REPLACE " " ";" compile_options ${base_compile_options})
 #-----------------------
 
-project(femFluidAnalysis C CXX)
+project(WSS_CSF C CXX)
 set(CMAKE_CXX_STANDARD 11)
 
 if("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
